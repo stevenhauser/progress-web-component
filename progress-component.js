@@ -88,11 +88,16 @@
       return 100 * (n / d) + '%';
     };
 
+    let extractNumAttr = function(node, attr) {
+      return Math.abs(parseFloat(node.getAttribute(attr)));
+    };
+
     let setProgWidthOf = function(node) {
       let input = inputs.get(node);
-      let max   = parseFloat(input.getAttribute('max'));
+      let min   = extractNumAttr(input, 'min');
+      let max   = extractNumAttr(input, 'max');
       let val   = input.valueAsNumber;
-      progs.get(node).style.width = pct(val, max);
+      progs.get(node).style.width = pct(val + min, min + max);
     };
 
     let setOutputOf = function(node) {
