@@ -14,11 +14,36 @@
 
   // Caches for private references w/o requerying
   // and for bound callback functions
-  const shadows = new WeakMap();
-  const cbs     = new WeakMap();
-  const inputs  = new WeakMap();
-  const outputs = new WeakMap();
-  const progs   = new WeakMap();
+  const notifiers = new WeakMap();
+  const observers = new WeakMap();
+  const shadows   = new WeakMap();
+  const cbs       = new WeakMap();
+  const inputs    = new WeakMap();
+  const outputs   = new WeakMap();
+  const progs     = new WeakMap();
+
+  // Builds a notifier for `node` for use with
+  // `Object.observe`
+  let buildNotifier = function(node) {
+    notifiers.set(node, Object.getNotifier(node));
+    return notifiers.get(node);
+  };
+
+  let observe = (function() {
+    // `this` will be bound to a node
+    let observer = function(changes) {
+      render(this);
+    };
+
+    // Whenever `node` `update`s, call `observer` which
+    // will rerender the node.
+    return function(node) {
+      observers.set(node, observer.bind(node));
+      Object.observe(node, observers.get(node), ['update']);
+      return observers.get(node);
+    };
+  }());
+
 
   // Shadow DOM construction and caching
   let buildShadow = (function() {
@@ -79,6 +104,11 @@
     };
   }());
 
+  let die = function(node) {
+    node.removeEventListener('input', cbs.get(node));
+    Object.unobserve(node, observers.get(node));
+  };
+
   // Rendering the width of the progress and
   // the value of the output node.
   let render = (function() {
@@ -122,16 +152,18 @@
       },
       set: function(val) {
         inputs.get(this).value = val;
-        // @TODO: This would be *much* better via Object.observe
-        // and a notifier, but I just wanted to get this functionality
-        // in here for now. Weeeeeee.
-        render(this);
+        notifiers.get(this).notify({
+          type: 'update',
+          name: 'innerInput'
+        });
         return this;
       }
     },
 
     createdCallback: { value: function() {
       console.log( 'created', this );
+      buildNotifier(this);
+      observe(this);
       buildShadow(this);
       render(this);
       bindEvents(this);
@@ -144,7 +176,7 @@
 
     detachedCallback: { value: function() {
       console.log( 'detached', this );
-      this.removeEventListener('input', cbs.get(this));
+      die(this);
     } },
 
     attributeChangedCallback: { value: function() {
