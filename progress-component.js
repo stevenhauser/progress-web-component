@@ -7,29 +7,26 @@
   const $     = document.querySelector.bind(document);
 
   // Selectors
-  const progSel  = '#progress';
-  const bgSel    = '#bg';
-  const inputSel = 'input';
+  const progSel   = '#progress';
+  const bgSel     = '#bg';
+  const inputSel  = 'input';
+  const outputSel = 'output';
 
   // Caches for private references w/o requerying
   // and for bound callback functions
   const shadows = new WeakMap();
   const cbs     = new WeakMap();
   const inputs  = new WeakMap();
+  const outputs = new WeakMap();
   const progs   = new WeakMap();
 
   // Shadow DOM construction and caching
   let buildShadow = (function() {
     const tmpl = $('#progress-bar-innards');
 
-    let cacheInput = function(node) {
-      inputs.set(node, shadows.get(node).querySelector(inputSel));
-      return inputs.get(node);
-    };
-
-    let cacheProgRect = function(node) {
-      progs.set(node, shadows.get(node).querySelector(progSel));
-      return progs.get(node);
+    let cacheNode = function(node, map, selector) {
+      map.set(node, shadows.get(node).querySelector(selector));
+      return map.get(node);
     };
 
     return function(node) {
@@ -37,8 +34,9 @@
       let shadow = node.createShadowRoot();
       shadow.appendChild(tmplClone);
       shadows.set(node, shadow);
-      cacheInput(node);
-      cacheProgRect(node);
+      cacheNode(node, inputs, inputSel);
+      cacheNode(node, outputs, outputSel);
+      cacheNode(node, progs, progSel);
       configureChildren(node);
       return shadow;
     };
@@ -47,10 +45,9 @@
   // Applying attributes to child nodes
   let configureChildren = (function() {
     const attrs = Object.freeze({
-      rx:          { name: 'rx',   sels: [progSel, bgSel] },
-      ry:          { name: 'ry',   sels: [progSel, bgSel] },
-      'bg-fill':   { name: 'fill', sels: [bgSel] },
-      'prog-fill': { name: 'fill', sels: [progSel] }
+      min:  { name: 'min',  sels: [inputSel] },
+      max:  { name: 'max',  sels: [inputSel] },
+      step: { name: 'step', sels: [inputSel] }
     });
 
     return function(node) {
@@ -68,7 +65,8 @@
   // Binding events to child nodes
   let bindEvents = (function() {
     let inputHandler = function(e) {
-      setProgWidthOf(this);
+      render(this);
+      render(this);
     };
 
     let buildBoundInputHandler = function(node) {
@@ -82,11 +80,32 @@
     };
   }());
 
-  // Utility function to set the width of the progress
-  // based on `node`'s input
-  let setProgWidthOf = function(node) {
-    progs.get(node).setAttribute('width', inputs.get(node).value);
-  };
+  // Rendering the width of the progress and
+  // the value of the output node.
+  let render = (function() {
+
+    let pct = function(n, d) {
+      return 100 * (n / d) + '%';
+    };
+
+    let setProgWidthOf = function(node) {
+      let input = inputs.get(node);
+      let max   = parseFloat(input.getAttribute('max'));
+      let val   = input.valueAsNumber;
+      progs.get(node).style.width = pct(val, max);
+    };
+
+    let setOutputOf = function(node) {
+      outputs.get(node).value = inputs.get(node).valueAsNumber;
+    };
+
+    return function(node) {
+      setProgWidthOf(node);
+      setOutputOf(node);
+    };
+
+  }());
+
 
   // Building the prototype of the custom element
   const proto = Object.create(HTMLElement.prototype);
@@ -96,7 +115,7 @@
     createdCallback: { value: function() {
       console.log( 'created', this );
       buildShadow(this);
-      setProgWidthOf(this);
+      render(this);
       bindEvents(this);
     } },
 
