@@ -116,6 +116,20 @@
 
   Object.defineProperties(proto, {
 
+    value: {
+      get: function() {
+        return inputs.get(this).valueAsNumber;
+      },
+      set: function(val) {
+        inputs.get(this).value = val;
+        // @TODO: This would be *much* better via Object.observe
+        // and a notifier, but I just wanted to get this functionality
+        // in here for now. Weeeeeee.
+        render(this);
+        return this;
+      }
+    },
+
     createdCallback: { value: function() {
       console.log( 'created', this );
       buildShadow(this);
