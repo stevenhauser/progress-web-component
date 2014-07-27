@@ -1,7 +1,7 @@
 progress-bar {
   display: flex;
   max-width: 300px;
-  margin-bottom: 10;
+  margin-bottom: 10px;
 }
 
 progress-bar::shadow #progress {

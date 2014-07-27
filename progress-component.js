@@ -66,7 +66,6 @@
   let bindEvents = (function() {
     let inputHandler = function(e) {
       render(this);
-      render(this);
     };
 
     let buildBoundInputHandler = function(node) {
